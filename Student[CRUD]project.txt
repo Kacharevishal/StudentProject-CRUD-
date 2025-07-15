@@ -1,0 +1,647 @@
+*Student file
+
+package com.student;
+
+public class Student {
+	
+	private int id;
+	private String name;
+	private String email;
+	private String course;
+	
+	public int getId() {
+		return id;
+	}
+	public void setId(int id) {
+		this.id = id;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public String getEmail() {
+		return email;
+	}
+	public void setEmail(String email) {
+		this.email = email;
+	}
+	public String getCourse() {
+		return course;
+	}
+	public void setCourse(String course) {
+		this.course = course;
+	}
+
+}
+
+*Database file
+package com.student;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Database {
+
+	public static Connection getConnection() {
+		Connection con = null;
+
+		try {
+			Class.forName("com.mysql.cj.jdbc.Driver");
+			con = DriverManager.getConnection("jdbc:mysql://localhost:3306/student", "root", "Vishal2748@");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return con;
+
+	}
+
+	// Add Student
+	public static Student addStudent(Student s) throws SQLException {
+		try (Connection con = getConnection()) {
+			PreparedStatement pstmt = con.prepareStatement("INSERT INTO studentinfo(name, email, course)VALUES(?,?,?)");
+			pstmt.setString(1, s.getName());
+			pstmt.setString(2, s.getEmail());
+			pstmt.setString(3, s.getCourse());
+
+			pstmt.executeUpdate();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return s;
+
+	}
+
+	// Show All Students
+
+	public static List<Student> getAllStudent() throws SQLException {
+		List<Student> list = new ArrayList<>();
+
+		try (Connection con = getConnection();
+
+				Statement stmt = con.createStatement();
+				ResultSet rs = stmt.executeQuery("SELECT * FROM studentinfo")) {
+
+			while (rs.next())
+
+			{
+				Student s = new Student();
+				s.setId(rs.getInt("id"));
+				s.setName(rs.getString("name"));
+				s.setEmail(rs.getString("email"));
+				s.setCourse(rs.getString("course"));
+
+				list.add(s);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return list;
+	}
+
+	// Edit Student By id 
+
+	public static Student getStudentById(int id) throws SQLException {
+		Student s = new Student();
+		try (Connection con = getConnection();
+				PreparedStatement pstmt = con.prepareStatement("SELECT * FROM studentinfo WHERE id =?")) {
+			pstmt.setInt(1, id);
+			ResultSet rs = pstmt.executeQuery();
+			if (rs.next()) {
+				s.setId(rs.getInt("id"));
+				s.setName(rs.getString("name"));
+				s.setEmail(rs.getString("email"));
+				s.setCourse(rs.getString("course"));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return s;
+	}
+
+	// Update Student
+
+	public static void updateStudent(Student s) throws SQLException {
+		try (Connection con = getConnection();
+				PreparedStatement pstmt = con
+						.prepareStatement("UPDATE studentinfo SET name = ?, email = ?, course = ? WHERE ID = ?");) {
+
+			pstmt.setString(1, s.getName());
+			pstmt.setString(2, s.getEmail());
+			pstmt.setString(3, s.getCourse());
+			pstmt.setInt(4, s.getId());
+
+			pstmt.executeUpdate();
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	// Delete Student
+
+	public static void deleteStudent(int id) throws SQLException {
+		try (Connection con = getConnection();
+				PreparedStatement pstmt = con.prepareStatement("DELETE FROM studentinfo WHERE ID = ?");) {
+			pstmt.setInt(1, id);
+			pstmt.executeUpdate();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}
+
+*View Student Page
+
+package com.student;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+
+public class ViewStudent extends HttpServlet {
+	
+	 protected void doPost(HttpServletRequest request, HttpServletResponse response)
+	            throws IOException {
+	        try {
+	            List<Student> list = Database.getAllStudent();
+	            response.sendRedirect("ViewStudents.jsp");
+	           
+	        } catch (SQLException e) {
+	            e.printStackTrace();
+	        }
+	        
+	    }
+
+}
+
+*Edit Student Page
+
+package com.student;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+
+
+public class EditStudent extends HttpServlet{
+protected void doPost(HttpServletRequest req, HttpServletResponse res)throws ServletException, IOException{
+		
+		int id=Integer.parseInt(req.getParameter("id"));
+		String name=req.getParameter("name");
+		String email=req.getParameter("email");
+		String course=req.getParameter("course");
+		
+		Student s=new Student();
+		s.setId(id);
+		s.setName(name);
+		s.setEmail(email);
+		s.setCourse(course);
+		
+		try {
+			Database.updateStudent(s);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		res.sendRedirect("ViewStudent.jsp");
+	}
+	@Override
+	protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+	    int id = Integer.parseInt(req.getParameter("id"));
+	    
+	    Student s = new Student();
+		try {
+			s = Database.getStudentById(id);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	    req.setAttribute("student", s);
+
+	    RequestDispatcher rd = req.getRequestDispatcher("ViewStudent.jsp");
+	    rd.forward(req, res);
+	}
+
+}
+
+*Dlete Student
+
+package com.student;
+
+import java.io.IOException;
+import java.sql.SQLException;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+public class DeleteStudent extends HttpServlet{
+protected void doGet(HttpServletRequest req, HttpServletResponse res)throws ServletException, IOException {
+		
+		int id=Integer.parseInt(req.getParameter("id"));
+		
+		try {
+			Database.deleteStudent(id);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		res.sendRedirect("ViewStudent.jsp");
+		
+	}
+	@Override
+	protected void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+	    doGet(req, res);
+	}
+
+}
+
+*Web.xml Page
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+  <display-name>StudentJspProject1</display-name>
+  
+  <servlet>
+  <servlet-name>AddStudent</servlet-name>
+  <servlet-class>com.student.AddStudent</servlet-class>
+  </servlet>
+  
+  <servlet-mapping>
+  <servlet-name>AddStudent</servlet-name>
+  <url-pattern>/AddStudent</url-pattern>
+  </servlet-mapping>
+  
+  <servlet>
+  <servlet-name>ViewStudent</servlet-name>
+  <servlet-class>com.student.ViewStudent</servlet-class>
+  </servlet>
+  
+  <servlet-mapping>
+  <servlet-name>ViewStudent</servlet-name>
+  <url-pattern>/ViewStudent</url-pattern>
+  </servlet-mapping>
+  
+  <servlet>
+  <servlet-name>DeleteStudent</servlet-name>
+  <servlet-class>com.student.DeleteStudent</servlet-class>
+  </servlet>
+  
+  <servlet-mapping>
+  <servlet-name>DeleteStudent</servlet-name>
+  <url-pattern>/DeleteStudent</url-pattern>
+  </servlet-mapping>
+  
+   <servlet>
+  <servlet-name>EditStudent</servlet-name>
+  <servlet-class>com.student.EditStudent</servlet-class>
+  </servlet>
+  
+  <servlet-mapping>
+  <servlet-name>EditStudent</servlet-name>
+  <url-pattern>/EditStudent</url-pattern>
+  </servlet-mapping>
+  
+  <welcome-file-list>
+        <welcome-file>ViewStudent.jsp</welcome-file>
+        <welcome-file>add.jsp</welcome-file>
+        <welcome-file>edit.jsp</welcome-file>
+  </welcome-file-list>
+</web-app>
+
+*Add.jsp Page
+
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Student</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .form-container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 300px;
+    }
+
+    .form-container h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .form-group input[type="submit"] {
+      width: 100%;
+      padding: 10px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .form-group input[type="submit"]:hover {
+      background-color: #357ae8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="form-container">
+    <h2>Add Student</h2>
+    <form action="AddStudent" method="post">
+      <div class="form-group">
+        <label for="name">Name:</label>
+        <input type="text" name="name" id="name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="text" name="email" id="email" required>
+      </div>
+
+      <div class="form-group">
+        <label for="course">Course:</label>
+        <input type="text" name="course" id="course" required>
+      </div>
+
+      <div class="form-group">
+        <input type="submit" value="Add Student">
+      </div>
+    </form>
+  </div>
+
+</body>
+</html>
+
+*Edit.jsp Page
+
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+
+<%@ page
+	import="com.student.Database, com.student.Student"%>
+<%
+    int id= Integer.parseInt(request.getParameter("id"));
+    Student s = Database.getStudentById(id);
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Edit Student</title>
+</head>
+<style>
+body {
+	font-family: Arial, sans-serif;
+	background: #f4f4f4;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100vh;
+	margin: 0;
+}
+
+.form-container {
+	background: #fff;
+	padding: 30px;
+	border-radius: 10px;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+	width: 300px;
+}
+
+.form-container h2 {
+	text-align: center;
+	margin-bottom: 20px;
+}
+
+.form-group {
+	margin-bottom: 15px;
+}
+
+.form-group label {
+	display: block;
+	margin-bottom: 5px;
+	font-weight: bold;
+}
+
+.form-group input[type="text"] {
+	width: 100%;
+	padding: 8px;
+	box-sizing: border-box;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+}
+
+.form-group input[type="submit"] {
+	width: 100%;
+	padding: 10px;
+	background-color: #4285f4;
+	color: white;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	font-weight: bold;
+}
+
+.form-group input[type="submit"]:hover {
+	background-color: #357ae8;
+}
+</style>
+
+<body>
+
+	<div class="form-container">
+		<h2>Edit Student</h2>
+		<form action="EditStudent" method="post">
+
+			<input type="hidden" name="id" value="<%= s.getId() %>">
+			
+			<div class="form-group">
+				<label for="name">Name:</label> <input type="text" name="name"
+					value="<%= s.getName() %>" id="name">
+			</div>
+
+			<div class="form-group">
+				<label for="email">Email:</label> <input type="text" name="email"
+					value="<%= s.getEmail() %>" id="email">
+			</div>
+
+			<div class="form-group">
+				<label for="course">Course:</label> <input type="text" name="course"
+					value="<%= s.getCourse() %>" id="course">
+			</div>
+
+			<div class="form-group">
+				<input type="submit" value="submit">
+			</div>
+		</form>
+	</div>
+
+</body>
+</html>
+
+</html>
+
+*ViewStudent Page 
+
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ page import="java.util.*, com.student.*" %>
+<%
+    List<Student> students = Database.getAllStudent();
+%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Student List</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 40px;
+            background-color: #f9f9f9;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        a {
+            text-decoration: none;
+            color: #007bff;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .action-links a {
+            margin-right: 10px;
+        }
+
+        .add-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #28a745;
+            color: white;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .add-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Student List</h2>
+    <a href="add.jsp" class="add-btn">+ Add New Student</a>
+
+    <table>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Course</th>
+            <th>Action</th>
+        </tr>
+        <%
+            for (Student s : students) {
+        %>
+        <tr>
+            <td><%= s.getId() %></td>
+            <td><%= s.getName() %></td>
+            <td><%= s.getEmail() %></td>
+            <td><%= s.getCourse() %></td>
+            <td class="action-links">
+                <a href="edit.jsp?id=<%= s.getId() %>">Edit</a>
+                <a href="DeleteStudent?id=<%= s.getId() %>">Delete</a>
+            </td>
+        </tr>
+        <% } %>
+    </table>
+
+</body>
+</html>
+
+
